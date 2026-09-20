@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>태양 고도 · 그림자 · 기온 탐구실</title>
+<style>
+  :root{
+    --sky:#dff4ff;
+    --sky2:#9edcff;
+    --orange:#ff9b42;
+    --orange2:#ffbd67;
+    --navy:#17324d;
+    --green:#cfe8b4;
+    --ground:#f1e3bf;
+    --card:#ffffff;
+    --line:#4f7da0;
+    --shadow:rgba(45,55,70,.33);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;
+    font-family:"Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;
+    color:var(--navy);
+    background:#f7fbfd;
+  }
+  .app{
+    width:min(1180px,96vw);
+    margin:0 auto;
+    padding:18px 0 44px;
+  }
+  .topbar{
+    background:white;
+    border:2px solid #d8eef8;
+    border-radius:22px;
+    padding:18px 22px;
+    display:flex;
+    gap:16px;
+    align-items:center;
+    justify-content:space-between;
+    box-shadow:0 10px 25px rgba(36,100,132,.08);
+    flex-wrap:wrap;
+  }
+  .title h1{
+    margin:0 0 8px;
+    font-size:clamp(24px,3.3vw,40px);
+    letter-spacing:-1px;
+  }
+  .title p{
+    margin:4px 0;
+    font-size:clamp(15px,1.8vw,19px);
+    font-weight:700;
+  }
+  .badge{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    background:#fff3df;
+    color:#7a4313;
+    padding:10px 14px;
+    border-radius:999px;
+    font-size:15px;
+    font-weight:800;
+  }
+
+  .metrics{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:12px;
+    margin:16px 0;
+  }
+  .metric{
+    background:white;
+    border-radius:18px;
+    padding:16px;
+    text-align:center;
+    border:2px solid #e1f0f6;
+    min-height:112px;
+    box-shadow:0 8px 20px rgba(25,78,105,.06);
+  }
+  .metric .label{font-size:16px;font-weight:800;color:#51718a;margin-bottom:8px}
+  .metric .value{font-size:clamp(24px,3.4vw,38px);font-weight:950;letter-spacing:-1px}
+  .metric small{display:block;font-weight:700;margin-top:3px;color:#7190a5}
+
+  .main-grid{
+    display:grid;
+    grid-template-columns:1.45fr .85fr;
+    gap:16px;
+  }
+  .panel{
+    background:white;
+    border-radius:22px;
+    border:2px solid #dceef5;
+    overflow:hidden;
+    box-shadow:0 10px 25px rgba(30,87,117,.07);
+  }
+  .panel-title{
+    padding:15px 18px 10px;
+    font-size:21px;
+    font-weight:950;
+  }
+
+  .scene{
+    position:relative;
+    height:430px;
+    overflow:hidden;
+    background:linear-gradient(to bottom,var(--sky2) 0%,var(--sky) 68%,#f9fdff 69%);
+    border-top:1px solid #d7edf6;
+  }
+  .cloud{position:absolute;background:white;border-radius:50px;opacity:.82}
+  .cloud:before,.cloud:after{content:"";position:absolute;background:white;border-radius:50%}
+  .cloud.one{width:110px;height:30px;left:8%;top:14%}
+  .cloud.one:before{width:45px;height:45px;left:16px;top:-20px}
+  .cloud.one:after{width:50px;height:50px;right:12px;top:-24px}
+  .cloud.two{width:90px;height:25px;right:10%;top:23%}
+  .cloud.two:before{width:38px;height:38px;left:13px;top:-18px}
+  .cloud.two:after{width:42px;height:42px;right:9px;top:-20px}
+
+  .direction{
+    position:absolute;
+    top:12px;
+    font-size:14px;
+    font-weight:900;
+    background:rgba(255,255,255,.78);
+    padding:7px 10px;
+    border-radius:999px;
+  }
+  .direction.east{left:12px}
+  .direction.south{left:50%;transform:translateX(-50%)}
+  .direction.west{right:12px}
+
+  .sun{
+    position:absolute;
+    width:66px;height:66px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#fff7bd 0 18%,#ffd166 19% 52%,#ff9f43 53%);
+    box-shadow:0 0 0 10px rgba(255,186,78,.18),0 0 35px rgba(255,162,46,.6);
+    transform:translate(-50%,-50%);
+    transition:left .14s linear, top .14s linear, opacity .2s;
+    z-index:5;
+  }
+  .sun-label{
+    position:absolute;
+    left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    font-size:13px;font-weight:950;color:#7d4816;
+  }
+  .sunpath{
+    position:absolute;
+    left:8%;right:8%;
+    top:80px;height:230px;
+    border-top:3px dashed rgba(56,110,147,.28);
+    border-radius:50% 50% 0 0;
+    pointer-events:none;
+  }
+  .horizon{
+    position:absolute;
+    bottom:109px;left:0;right:0;
+    height:3px;background:#7eb477;
+    opacity:.55;
+  }
+  .ground{
+    position:absolute;
+    bottom:0;left:0;right:0;height:110px;
+    background:linear-gradient(#dbeec1,#cce1aa);
+    border-top:4px solid #97bb76;
+  }
+  .ground:after{
+    content:"운동장";
+    position:absolute;right:18px;top:14px;
+    font-weight:900;color:#668556;
+  }
+  .rod-base{
+    position:absolute;
+    left:50%;
+    bottom:72px;
+    width:14px;
+    border-radius:8px 8px 2px 2px;
+    background:linear-gradient(90deg,#7f5b39,#b9824d 50%,#6b4b31);
+    transform:translateX(-50%);
+    transform-origin:bottom center;
+    z-index:8;
+    box-shadow:2px 1px 3px rgba(0,0,0,.15);
+  }
+  .rod-cap{
+    position:absolute;
+    left:50%;
+    bottom:68px;
+    width:24px;height:10px;
+    border-radius:50%;
+    transform:translateX(-50%);
+    background:#765132;
+    z-index:9;
+  }
+  .shadow{
+    position:absolute;
+    left:50%;
+    bottom:70px;
+    height:13px;
+    background:linear-gradient(90deg,rgba(55,60,65,.45),rgba(55,60,65,.12));
+    border-radius:999px;
+    transform-origin:left center;
+    z-index:6;
+    transition:width .14s linear, transform .14s linear, opacity .2s;
+  }
+  .shadow-dot{
+    position:absolute;
+    width:14px;height:14px;border-radius:50%;
+    background:#4f5e66;
+    z-index:7;
+    transform:translate(-50%,-50%);
+    transition:left .14s linear, bottom .14s linear;
+  }
+  .shadow-tag{
+    position:absolute;
+    z-index:10;
+    background:rgba(255,255,255,.94);
+    border:2px solid #bddbe8;
+    border-radius:12px;
+    padding:6px 9px;
+    font-size:13px;
+    font-weight:900;
+    transform:translate(-50%,-100%);
+    white-space:nowrap;
+  }
+  .below-msg{
+    position:absolute;
+    left:50%;top:48%;
+    transform:translate(-50%,-50%);
+    padding:12px 16px;
+    background:rgba(255,255,255,.9);
+    border-radius:14px;
+    font-weight:900;
+    display:none;
+    z-index:12;
+  }
+
+  .controls{
+    padding:18px;
+    border-top:1px solid #e5f1f5;
+  }
+  .control{
+    margin-bottom:20px;
+    background:#f8fcfe;
+    padding:14px 15px;
+    border-radius:16px;
+    border:1px solid #dceef5;
+  }
+  .control-head{
+    display:flex;justify-content:space-between;gap:10px;align-items:center;
+    font-size:18px;font-weight:950;margin-bottom:10px;
+  }
+  .control-value{
+    background:#fff0da;
+    color:#754719;
+    border-radius:999px;
+    padding:7px 11px;
+    min-width:100px;
+    text-align:center;
+  }
+  input[type=range]{
+    width:100%;
+    height:38px;
+    accent-color:var(--orange);
+    cursor:pointer;
+  }
+  .ticks{display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:#67859a}
+  .button-row{display:flex;gap:10px;flex-wrap:wrap}
+  button{
+    border:0;
+    border-radius:14px;
+    padding:13px 18px;
+    font-size:17px;
+    font-weight:950;
+    cursor:pointer;
+    color:#17324d;
+    background:#e7f5fb;
+    min-height:50px;
+  }
+  button.primary{background:#ffb45f;color:#542f0c}
+  button:hover{filter:brightness(.98);transform:translateY(-1px)}
+
+  .chart-wrap{padding:0 16px 16px}
+  canvas{
+    width:100%;
+    height:255px;
+    display:block;
+    background:linear-gradient(#f9fdff,#ffffff);
+    border:1px solid #dfeef4;
+    border-radius:16px;
+  }
+  .legend{
+    display:flex;gap:14px;align-items:center;
+    padding:10px 4px 0;
+    font-size:14px;font-weight:800;color:#59778b;flex-wrap:wrap
+  }
+  .legend span:before{content:"";display:inline-block;width:16px;height:4px;border-radius:3px;margin-right:6px;vertical-align:middle;background:#ff9b42}
+  .legend .mark:before{background:#3d7498}
+
+  .science-note{
+    margin:16px 0;
+    padding:20px;
+    background:linear-gradient(135deg,#fff7e9,#ffffff 65%);
+    border:2px solid #ffddb4;
+    border-radius:22px;
+    box-shadow:0 10px 25px rgba(150,95,30,.06);
+  }
+  .science-note h2{margin:0 0 12px;font-size:25px}
+  .note-grid{
+    display:grid;grid-template-columns:1fr 1fr;gap:14px;
+  }
+  .note-card{
+    background:white;border-radius:17px;padding:16px;border:1px solid #f0e1cd;
+    line-height:1.65;font-size:16px;font-weight:650;
+  }
+  .note-card h3{margin:0 0 8px;font-size:20px}
+  .key{
+    margin-top:14px;
+    text-align:center;
+    padding:16px;
+    border-radius:16px;
+    background:#ffb760;
+    color:#5a330d;
+    font-size:clamp(19px,2.5vw,28px);
+    font-weight:1000;
+  }
+
+  .questions{
+    background:white;
+    border:2px solid #d8eef8;
+    border-radius:22px;
+    padding:20px;
+  }
+  .questions h2{margin:0 0 12px;font-size:24px}
+  .q{
+    padding:12px 14px;
+    margin:8px 0;
+    border-radius:14px;
+    background:#f5fbfe;
+    font-size:17px;
+    font-weight:800;
+    line-height:1.5;
+  }
+  .footnote{
+    margin-top:12px;
+    color:#647f91;
+    font-size:13px;
+    font-weight:700;
+    line-height:1.5;
+  }
+
+  @media (max-width:850px){
+    .metrics{grid-template-columns:repeat(2,1fr)}
+    .main-grid{grid-template-columns:1fr}
+    .scene{height:390px}
+    .note-grid{grid-template-columns:1fr}
+  }
+  @media (max-width:520px){
+    .app{width:98vw;padding-top:8px}
+    .topbar{border-radius:16px;padding:14px}
+    .metrics{gap:8px}
+    .metric{padding:12px 7px;min-height:100px}
+    .scene{height:360px}
+    .panel{border-radius:16px}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="title">
+      <h1>☀️ 태양 고도 · 그림자 · 기온 탐구실</h1>
+      <p>측정 장소 : <strong>대구강북초등학교</strong></p>
+      <p>측정 날짜 : <strong id="dateLabel">-</strong></p>
+    </div>
+    <div class="badge">📍 위도 35.94055°N · 경도 128.56673°E</div>
+  </header>
+
+  <section class="metrics">
+    <div class="metric">
+      <div class="label">🕒 현재 시각</div>
+      <div class="value" id="timeMetric">12:00</div>
+    </div>
+    <div class="metric">
+      <div class="label">☀️ 태양 고도</div>
+      <div class="value" id="altMetric">-</div>
+      <small>지평선으로부터의 각도</small>
+    </div>
+    <div class="metric">
+      <div class="label">📏 그림자 길이</div>
+      <div class="value" id="shadowMetric">-</div>
+      <small id="shadowSmall">막대 30 cm 기준</small>
+    </div>
+    <div class="metric">
+      <div class="label">🌡️ 기온</div>
+      <div class="value" id="tempMetric">-</div>
+      <small>교육용 기온 모형</small>
+    </div>
+  </section>
+
+  <div class="main-grid">
+    <section class="panel">
+      <div class="panel-title">🌤️ 하늘과 그림자 관찰</div>
+      <div class="scene" id="scene">
+        <div class="direction east">동쪽</div>
+        <div class="direction south">남쪽 하늘</div>
+        <div class="direction west">서쪽</div>
+        <div class="cloud one"></div>
+        <div class="cloud two"></div>
+        <div class="sunpath"></div>
+        <div class="horizon"></div>
+        <div class="sun" id="sun"><span class="sun-label">태양</span></div>
+        <div class="below-msg" id="belowMsg">🌙 현재 태양은 지평선 아래에 있습니다.</div>
+        <div class="ground"></div>
+        <div class="shadow" id="shadow"></div>
+        <div class="shadow-dot" id="shadowDot"></div>
+        <div class="shadow-tag" id="shadowTag">그림자</div>
+        <div class="rod-base" id="rod"></div>
+        <div class="rod-cap"></div>
+      </div>
+
+      <div class="controls">
+        <div class="control">
+          <div class="control-head">
+            <span>🕒 시간 움직이기</span>
+            <span class="control-value" id="timeValue">12:00</span>
+          </div>
+          <input id="timeSlider" type="range" min="360" max="1200" step="10" value="720" aria-label="시간 조절">
+          <div class="ticks"><span>오전 6시</span><span>오후 1시</span><span>오후 8시</span></div>
+        </div>
+
+        <div class="control">
+          <div class="control-head">
+            <span>📏 막대 길이 바꾸기</span>
+            <span class="control-value" id="rodValue">30 cm</span>
+          </div>
+          <input id="rodSlider" type="range" min="10" max="100" step="5" value="30" aria-label="막대 길이 조절">
+          <div class="ticks"><span>10 cm</span><span>55 cm</span><span>100 cm</span></div>
+        </div>
+
+        <div class="button-row">
+          <button class="primary" id="playBtn">▶ 자동 관찰</button>
+          <button id="noonBtn">☀️ 남중 무렵 보기</button>
+          <button id="resetBtn">↺ 처음으로</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-title">🌡️ 시간에 따른 기온 변화</div>
+      <div class="chart-wrap">
+        <canvas id="tempChart" width="520" height="300"></canvas>
+        <div class="legend">
+          <span>기온 변화</span>
+          <span class="mark">현재 시각</span>
+        </div>
+        <p class="footnote">
+          ※ 실제 기상 관측값이 아니라, <strong>태양 고도와 시간에 따른 변화를 이해하기 위한 교육용 모형</strong>입니다.
+          최고 기온은 남중 뒤 약 2~3시간 후에 나타나도록 설정했습니다.
+        </p>
+      </div>
+      <div style="padding:0 16px 18px">
+        <div class="q" id="noonInfo">☀️ 오늘의 남중 시각을 계산하고 있습니다.</div>
+        <div class="q" id="peakInfo">🌡️ 기온이 가장 높은 시각을 계산하고 있습니다.</div>
+      </div>
+    </section>
+  </div>
+
+  <section class="science-note">
+    <h2>🔎 왜 이런 변화가 생길까요?</h2>
+    <div class="note-grid">
+      <div class="note-card">
+        <h3>📏 태양이 높아지면 그림자는?</h3>
+        태양이 낮게 떠 있을 때에는 햇빛이 <strong>비스듬히</strong> 들어오기 때문에 그림자가 길어집니다.
+        태양이 높이 떠 있을수록 햇빛이 위쪽에서 내려오기 때문에 그림자는 짧아집니다.
+        그래서 하루 중 태양 고도가 가장 높은 <strong>남중 무렵</strong>에는 그림자가 가장 짧습니다.
+      </div>
+      <div class="note-card">
+        <h3>🌡️ 기온은 왜 조금 늦게 높아질까요?</h3>
+        태양이 가장 높은 시각이 지나도 땅은 한동안 태양 에너지를 계속 받아 따뜻해집니다.
+        따뜻해진 땅이 주변의 공기를 데우기 때문에, 기온은 보통 태양이 가장 높은 시각보다
+        <strong>조금 늦게</strong> 가장 높아집니다.
+      </div>
+    </div>
+    <div class="key">태양이 높을수록 그림자는 짧아지고, 기온은 조금 늦게 가장 높아진다.</div>
+  </section>
+
+  <section class="questions">
+    <h2>🧪 스스로 탐구해 보기</h2>
+    <div class="q">① 그림자가 가장 짧아지는 시각을 찾아보세요.</div>
+    <div class="q">② 그때의 태양 고도는 몇 도인가요?</div>
+    <div class="q">③ 기온이 가장 높은 시각은 언제인가요?</div>
+    <div class="q">④ 태양 고도가 가장 높은 시각과 기온이 가장 높은 시각은 같은가요?</div>
+    <div class="q">⑤ 막대 길이를 20 cm, 40 cm, 60 cm로 바꾸면 그림자 길이는 어떻게 달라지나요?</div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const LAT = 35.94055;
+  const LON = 128.56673;
+  const TZ = 9; // Asia/Seoul, UTC+9
+
+  const timeSlider = document.getElementById('timeSlider');
+  const rodSlider = document.getElementById('rodSlider');
+  const timeValue = document.getElementById('timeValue');
+  const rodValue = document.getElementById('rodValue');
+  const timeMetric = document.getElementById('timeMetric');
+  const altMetric = document.getElementById('altMetric');
+  const shadowMetric = document.getElementById('shadowMetric');
+  const shadowSmall = document.getElementById('shadowSmall');
+  const tempMetric = document.getElementById('tempMetric');
+  const sun = document.getElementById('sun');
+  const shadow = document.getElementById('shadow');
+  const shadowDot = document.getElementById('shadowDot');
+  const shadowTag = document.getElementById('shadowTag');
+  const rod = document.getElementById('rod');
+  const belowMsg = document.getElementById('belowMsg');
+  const canvas = document.getElementById('tempChart');
+  const ctx = canvas.getContext('2d');
+  const playBtn = document.getElementById('playBtn');
+  const noonBtn = document.getElementById('noonBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const noonInfo = document.getElementById('noonInfo');
+  const peakInfo = document.getElementById('peakInfo');
+
+  let timer = null;
+
+  // 한국 표준시 기준 오늘 날짜를 얻는다.
+  function seoulDateParts(){
+    const fmt = new Intl.DateTimeFormat('en-CA', {
+      timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit'
+    });
+    const parts = Object.fromEntries(fmt.formatToParts(new Date()).map(p => [p.type,p.value]));
+    return {year:+parts.year, month:+parts.month, day:+parts.day};
+  }
+  const dateParts = seoulDateParts();
+  document.getElementById('dateLabel').textContent =
+    `${dateParts.year}년 ${dateParts.month}월 ${dateParts.day}일`;
+
+  function dayOfYear(y,m,d){
+    const start = Date.UTC(y,0,0);
+    const now = Date.UTC(y,m-1,d);
+    return Math.floor((now-start)/86400000);
+  }
+
+  // NOAA식에 가까운 간단한 태양 위치 근사 계산.
+  function solarPosition(minutes){
+    const n = dayOfYear(dateParts.year,dateParts.month,dateParts.day);
+    const hour = minutes / 60;
+    const gamma = 2*Math.PI/365 * (n - 1 + (hour - 12)/24);
+
+    const eqtime = 229.18 * (
+      0.000075 + 0.001868*Math.cos(gamma) - 0.032077*Math.sin(gamma)
+      - 0.014615*Math.cos(2*gamma) - 0.040849*Math.sin(2*gamma)
+    );
+    const decl =
+      0.006918 - 0.399912*Math.cos(gamma) + 0.070257*Math.sin(gamma)
+      - 0.006758*Math.cos(2*gamma) + 0.000907*Math.sin(2*gamma)
+      - 0.002697*Math.cos(3*gamma) + 0.00148*Math.sin(3*gamma);
+
+    const timeOffset = eqtime + 4*LON - 60*TZ;
+    let trueSolarTime = minutes + timeOffset;
+    trueSolarTime = ((trueSolarTime % 1440) + 1440) % 1440;
+    let hourAngle = trueSolarTime/4 - 180;
+    if(hourAngle < -180) hourAngle += 360;
+
+    const ha = hourAngle * Math.PI/180;
+    const lat = LAT * Math.PI/180;
+
+    const cosZenith =
+      Math.sin(lat)*Math.sin(decl) + Math.cos(lat)*Math.cos(decl)*Math.cos(ha);
+    const zenith = Math.acos(Math.max(-1,Math.min(1,cosZenith)));
+    const altitude = 90 - zenith*180/Math.PI;
+
+    // 태양 방위각(북=0, 동=90, 남=180, 서=270)
+    let az = Math.atan2(
+      Math.sin(ha),
+      Math.cos(ha)*Math.sin(lat) - Math.tan(decl)*Math.cos(lat)
+    ) * 180/Math.PI + 180;
+    az = (az + 360) % 360;
+
+    return {altitude, azimuth:az, hourAngle, eqtime};
+  }
+
+  function findSolarNoon(){
+    let best = {min:720, alt:-90};
+    for(let m=600;m<=900;m+=1){
+      const a = solarPosition(m).altitude;
+      if(a > best.alt) best = {min:m, alt:a};
+    }
+    return best;
+  }
+  const noon = findSolarNoon();
+  const peakTempMin = Math.min(1200, noon.min + 150);
+
+  function fmtTime(minutes){
+    const h = Math.floor(minutes/60);
+    const m = Math.round(minutes%60);
+    const hh = h.toString().padStart(2,'0');
+    const mm = m.toString().padStart(2,'0');
+    return `${hh}:${mm}`;
+  }
+
+  // 계절에 따라 조금 달라지는 교육용 기온 범위.
+  function seasonalBase(){
+    const n = dayOfYear(dateParts.year,dateParts.month,dateParts.day);
+    const summerFactor = Math.sin((2*Math.PI/365)*(n-172)); // 6월 말~7월에 높음
+    const mid = 18 + 8 * Math.max(-0.9, summerFactor);
+    return Math.max(6, Math.min(27, mid));
+  }
+
+  function modelTemp(minutes){
+    const mid = seasonalBase();
+    const minT = mid - 4.5;
+    const maxT = mid + 4.5;
+    const morning = 360;
+    if(minutes <= peakTempMin){
+      const p = Math.max(0, Math.min(1,(minutes-morning)/(peakTempMin-morning)));
+      // 오전에는 천천히 올라가다 오후에 최고
+      return minT + (maxT-minT)*(0.5-0.5*Math.cos(Math.PI*p));
+    }else{
+      const p = Math.max(0, Math.min(1,(minutes-peakTempMin)/(1200-peakTempMin)));
+      return maxT - 3.2*(0.5-0.5*Math.cos(Math.PI*p));
+    }
+  }
+
+  function drawChart(currentMin){
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const cssW = canvas.clientWidth || 500;
+    const cssH = 255;
+    canvas.width = Math.round(cssW*dpr);
+    canvas.height = Math.round(cssH*dpr);
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+
+    const W=cssW,H=cssH;
+    const L=46,R=14,T=18,B=38;
+    const plotW=W-L-R, plotH=H-T-B;
+
+    const vals=[];
+    for(let m=360;m<=1200;m+=10) vals.push(modelTemp(m));
+    const minV=Math.floor(Math.min(...vals)-1);
+    const maxV=Math.ceil(Math.max(...vals)+1);
+
+    const x = m => L + (m-360)/(1200-360)*plotW;
+    const y = v => T + (maxV-v)/(maxV-minV)*plotH;
+
+    ctx.clearRect(0,0,W,H);
+    ctx.font = '700 12px sans-serif';
+    ctx.fillStyle='#668397';
+    ctx.strokeStyle='#d9e8ef';
+    ctx.lineWidth=1;
+
+    // 가로 격자
+    for(let i=0;i<=4;i++){
+      const v=minV+(maxV-minV)*i/4;
+      const yy=y(v);
+      ctx.beginPath();ctx.moveTo(L,yy);ctx.lineTo(W-R,yy);ctx.stroke();
+      ctx.fillText(v.toFixed(0)+'℃',5,yy+4);
+    }
+    // 시간 눈금
+    [360,540,720,900,1080,1200].forEach(m=>{
+      const xx=x(m);
+      ctx.beginPath();ctx.moveTo(xx,T);ctx.lineTo(xx,H-B);ctx.strokeStyle='rgba(217,232,239,.55)';ctx.stroke();
+      ctx.fillStyle='#668397';
+      ctx.textAlign='center';
+      ctx.fillText(fmtTime(m),xx,H-13);
+    });
+
+    // 온도선
+    ctx.strokeStyle='#ff9b42';
+    ctx.lineWidth=4;
+    ctx.lineJoin='round';
+    ctx.lineCap='round';
+    ctx.beginPath();
+    let first=true;
+    for(let m=360;m<=1200;m+=10){
+      const xx=x(m), yy=y(modelTemp(m));
+      if(first){ctx.moveTo(xx,yy);first=false}else ctx.lineTo(xx,yy);
+    }
+    ctx.stroke();
+
+    // 최고기온 표시
+    const px=x(peakTempMin), py=y(modelTemp(peakTempMin));
+    ctx.fillStyle='#ff9b42';
+    ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+    ctx.font='800 12px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('최고 기온',px,Math.max(13,py-10));
+
+    // 현재 시각
+    const cx=x(currentMin), cy=y(modelTemp(currentMin));
+    ctx.strokeStyle='#3d7498';
+    ctx.lineWidth=2;
+    ctx.setLineDash([6,5]);
+    ctx.beginPath();ctx.moveTo(cx,T);ctx.lineTo(cx,H-B);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='#3d7498';
+    ctx.beginPath();ctx.arc(cx,cy,6,0,Math.PI*2);ctx.fill();
+  }
+
+  function update(){
+    const minutes = +timeSlider.value;
+    const rodCm = +rodSlider.value;
+    const s = solarPosition(minutes);
+    const alt = s.altitude;
+
+    timeValue.textContent = fmtTime(minutes);
+    timeMetric.textContent = fmtTime(minutes);
+    rodValue.textContent = `${rodCm} cm`;
+    shadowSmall.textContent = `막대 ${rodCm} cm 기준`;
+
+    // 막대 높이는 10~100 cm를 보기 좋게 38~155px에 대응
+    const rodPx = 38 + (rodCm-10)/90*117;
+    rod.style.height = `${rodPx}px`;
+
+    if(alt > 0){
+      altMetric.textContent = `${alt.toFixed(1)}°`;
+
+      const shadowCm = rodCm / Math.tan(alt*Math.PI/180);
+      shadowMetric.textContent = shadowCm > 999 ? '>999 cm' : `${shadowCm.toFixed(1)} cm`;
+
+      // 하늘의 태양 위치: 6~20시 수평 이동, 고도는 실제 고도 기반 수직 이동
+      const scene = document.getElementById('scene');
+      const W = scene.clientWidth;
+      const H = scene.clientHeight;
+      const xFrac = (minutes-360)/(1200-360);
+      const maxAlt = Math.max(55,noon.alt+5);
+      const yFrac = Math.max(0,Math.min(1,alt/maxAlt));
+      const sunLeft = 8 + xFrac*84;
+      const sunTop = 72 - yFrac*54;
+      sun.style.left = `${sunLeft}%`;
+      sun.style.top = `${sunTop}%`;
+      sun.style.opacity = '1';
+      belowMsg.style.display='none';
+
+      // 그림자 시각화: 실제 길이는 화면에서 로그에 가까운 압축
+      const maxSceneShadow = Math.min(W*0.43, 280);
+      const visualLen = Math.min(maxSceneShadow, 18 + Math.log1p(shadowCm)*34);
+      const morning = s.hourAngle < 0;
+      const dir = morning ? -1 : 1;
+
+      shadow.style.display='block';
+      shadowDot.style.display='block';
+      shadowTag.style.display='block';
+      shadow.style.width=`${visualLen}px`;
+      shadow.style.transform = `scaleX(${dir})`;
+
+      const centerX = W/2;
+      const dotX = centerX + dir*visualLen;
+      shadowDot.style.left=`${dotX}px`;
+      shadowDot.style.bottom=`70px`;
+      shadowTag.style.left=`${Math.max(58,Math.min(W-58,dotX))}px`;
+      shadowTag.style.bottom=`86px`;
+      shadowTag.textContent=`${shadowCm > 999 ? '매우 김' : shadowCm.toFixed(1)+' cm'}`;
+
+    }else{
+      altMetric.textContent = `${alt.toFixed(1)}°`;
+      shadowMetric.textContent = '측정 불가';
+      sun.style.opacity='.22';
+      sun.style.left = `${8 + ((minutes-360)/(1200-360))*84}%`;
+      sun.style.top='86%';
+      shadow.style.display='none';
+      shadowDot.style.display='none';
+      shadowTag.style.display='none';
+      belowMsg.style.display='block';
+    }
+
+    const temp = modelTemp(minutes);
+    tempMetric.textContent = `${temp.toFixed(1)}℃`;
+    drawChart(minutes);
+  }
+
+  noonInfo.textContent = `☀️ 오늘의 남중 무렵: 약 ${fmtTime(noon.min)} · 최대 태양 고도 약 ${noon.alt.toFixed(1)}°`;
+  peakInfo.textContent = `🌡️ 교육용 모형의 최고 기온 시각: 약 ${fmtTime(peakTempMin)} · 남중보다 약 2시간 30분 뒤`;
+
+  timeSlider.addEventListener('input',update);
+  rodSlider.addEventListener('input',update);
+  window.addEventListener('resize',update);
+
+  playBtn.addEventListener('click',()=>{
+    if(timer){
+      clearInterval(timer);timer=null;
+      playBtn.textContent='▶ 자동 관찰';
+      return;
+    }
+    playBtn.textContent='⏸ 멈추기';
+    timer=setInterval(()=>{
+      let v=+timeSlider.value+10;
+      if(v>1200) v=360;
+      timeSlider.value=v;
+      update();
+    },180);
+  });
+
+  noonBtn.addEventListener('click',()=>{
+    timeSlider.value = Math.round(noon.min/10)*10;
+    update();
+  });
+
+  resetBtn.addEventListener('click',()=>{
+    if(timer){clearInterval(timer);timer=null;playBtn.textContent='▶ 자동 관찰';}
+    timeSlider.value=720;
+    rodSlider.value=30;
+    update();
+  });
+
+  update();
+})();
+</script>
+</body>
+</html>
